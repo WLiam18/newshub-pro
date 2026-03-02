@@ -7,7 +7,8 @@ async function processArticle(article) {
     console.error('[Diagnostic] GROQ_API_KEY is missing!');
     return null;
   }
-  GROQ_API_KEY = GROQ_API_KEY.trim();
+  // Strictly remove all whitespace, newlines, and non-printable characters
+  GROQ_API_KEY = GROQ_API_KEY.replace(/[\s\n\r]/g, '');
 
   console.log(`Processing article: ${article.title.substring(0, 50)}...`);
 

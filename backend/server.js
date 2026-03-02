@@ -26,8 +26,11 @@ app.post('/api/ask', async (req, res) => {
         return res.status(500).json({ error: 'AI Key missing on server' });
     }
 
+    // Strictly remove all whitespace and newlines
+    const sanitizedKey = GROQ_API_KEY.replace(/[\s\n\r]/g, '');
+
     const Groq = require('groq-sdk');
-    const groq = new Groq({ apiKey: GROQ_API_KEY.trim() });
+    const groq = new Groq({ apiKey: sanitizedKey });
 
     const prompt = `
     Context: ${articleContext || 'General global news'}
