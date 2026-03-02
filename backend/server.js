@@ -20,8 +20,14 @@ app.get('/', (req, res) => {
 // AI Chatbot endpoint
 app.post('/api/ask', async (req, res) => {
     const { question, articleContext } = req.body;
+    const GROQ_API_KEY = process.env.GROQ_API_KEY;
+
+    if (!GROQ_API_KEY) {
+        return res.status(500).json({ error: 'AI Key missing on server' });
+    }
+
     const Groq = require('groq-sdk');
-    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+    const groq = new Groq({ apiKey: GROQ_API_KEY.trim() });
 
     const prompt = `
     Context: ${articleContext || 'General global news'}
@@ -33,10 +39,11 @@ app.post('/api/ask', async (req, res) => {
     try {
         const chatCompletion = await groq.chat.completions.create({
             messages: [{ role: 'user', content: prompt }],
-            model: 'llama-3.3-70b-versatile',
+            model: 'llama3-70b-8192', // Using 70b here as it's a single request, usually more stable than 3.3-70b
         });
         res.json({ answer: chatCompletion.choices[0].message.content });
     } catch (error) {
+        console.error('[Chatbot Error]', error.message);
         res.status(500).json({ error: error.message });
     }
 });
