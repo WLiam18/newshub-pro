@@ -17,7 +17,12 @@ const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, onBack }) => {
 
         const endpoint = isLogin ? '/api/login' : '/api/signup';
         try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+            let apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+            // Ensure no trailing slash for consistency
+            if (apiUrl.endsWith('/')) apiUrl = apiUrl.slice(0, -1);
+
+            console.log(`[NewsHub] Attempting connection to: ${apiUrl}${endpoint}`);
+
             const res = await fetch(`${apiUrl}${endpoint}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

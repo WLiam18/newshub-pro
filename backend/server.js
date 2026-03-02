@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config(); // Load from process.env or local .env
 const db = require('./db');
 const { fetchNews } = require('./scraper');
 const { processArticle } = require('./processor');
@@ -8,6 +8,10 @@ const { processArticle } = require('./processor');
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', message: 'NewsHub API is running.' });
+});
 
 app.get('/', (req, res) => {
     res.send('NewsHub API is running.');
