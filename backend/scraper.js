@@ -4,22 +4,24 @@ require('dotenv').config();
 const CATEGORIES = ['general', 'business', 'entertainment', 'health', 'science', 'sports', 'technology'];
 
 async function fetchNews() {
-    const MEDIASTACK_API_KEY = process.env.MEDIASTACK_API_KEY;
-    console.log(`[Diagnostic] MEDIASTACK_API_KEY present: ${!!MEDIASTACK_API_KEY}`);
-    if (MEDIASTACK_API_KEY) {
-        console.log(`[Diagnostic] Key starts with: ${MEDIASTACK_API_KEY.substring(0, 4)}...`);
+    let key = process.env.MEDIASTACK_API_KEY;
+    if (key) key = key.trim(); // Handle accidental spaces in Railway UI
+
+    console.log(`[Diagnostic] MEDIASTACK_API_KEY present: ${!!key}`);
+    if (key) {
+        console.log(`[Diagnostic] Key starts with: ${key.substring(0, 4)}...`);
     }
+
     const allArticles = [];
 
     for (const category of CATEGORIES) {
         try {
             console.log(`Fetching category: ${category}...`);
-            // Add a small delay to avoid 429 Rate Limits
             await new Promise(r => setTimeout(r, 1000));
 
             const response = await axios.get('http://api.mediastack.com/v1/news', {
                 params: {
-                    access_key: MEDIASTACK_API_KEY,
+                    access_key: key,
                     categories: category,
                     languages: 'en',
                     limit: 20
@@ -40,9 +42,15 @@ async function fetchNews() {
                 }));
                 allArticles.push(...categoryArticles);
                 console.log(`Fetched ${categoryArticles.length} articles for ${category}`);
+            } else if (response.data && response.data.error) {
+                console.error(`[Mediastack Error] Code: ${response.data.error.code}, Message: ${response.data.error.message}`);
             }
         } catch (error) {
-            console.error(`Error fetching category ${category} from Mediastack:`, error.message);
+            if (error.response && error.response.data) {
+                console.error(`[Mediastack HTTP Error] Status: ${error.response.status}, Data:`, JSON.stringify(error.response.data));
+            } else {
+                console.error(`Error fetching category ${category} from Mediastack:`, error.message);
+            }
         }
     }
 
