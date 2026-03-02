@@ -24,7 +24,8 @@ export default function App() {
   const limit = 12;
 
   const fetchArticles = async () => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    let apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    if (!apiUrl.startsWith('http')) apiUrl = `https://${apiUrl}`;
     try {
       const res = await fetch(`${apiUrl}/api/articles?limit=${limit}&offset=${page * limit}&category=${category}`);
       const data = await res.json();
@@ -43,7 +44,8 @@ export default function App() {
 
   const handleSync = async () => {
     setSyncing(true);
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    let apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    if (!apiUrl.startsWith('http')) apiUrl = `https://${apiUrl}`;
     try {
       await fetch(`${apiUrl}/api/ingest`, { method: "POST" });
       fetchArticles();

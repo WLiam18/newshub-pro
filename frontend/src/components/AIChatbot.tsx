@@ -17,7 +17,8 @@ const AIChatbot: React.FC = () => {
         setLoading(true);
 
         try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+            let apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+            if (!apiUrl.startsWith('http')) apiUrl = `https://${apiUrl}`;
             const res = await fetch(`${apiUrl}/api/ask`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

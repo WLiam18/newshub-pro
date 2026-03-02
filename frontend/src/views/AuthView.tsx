@@ -20,6 +20,8 @@ const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, onBack }) => {
             let apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
             // Ensure no trailing slash for consistency
             if (apiUrl.endsWith('/')) apiUrl = apiUrl.slice(0, -1);
+            // Ensure protocol is present to avoid relative path prefixing
+            if (!apiUrl.startsWith('http')) apiUrl = `https://${apiUrl}`;
 
             console.log(`[NewsHub] Attempting connection to: ${apiUrl}${endpoint}`);
 
