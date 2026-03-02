@@ -1,4 +1,5 @@
-const Groq = require('groq-sdk');
+```javascript
+const axios = require('axios');
 require('dotenv').config();
 
 async function processArticle(article) {
@@ -7,80 +8,87 @@ async function processArticle(article) {
     console.error('[Diagnostic] GROQ_API_KEY is missing!');
     return null;
   }
-  GROQ_API_KEY = GROQ_API_KEY.trim(); // Handle accidental spaces
+  GROQ_API_KEY = GROQ_API_KEY.trim();
 
-  const groq = new Groq({ apiKey: GROQ_API_KEY });
-  console.log(`Processing article: ${article.title.substring(0, 50)}...`);
+  console.log(`Processing article: ${ article.title.substring(0, 50) }...`);
 
   const prompt = `
     Analyze this news article for deep bias and sentiment. 
-    Category Hint: ${article.category_hint || 'General'}
+    Category Hint: ${ article.category_hint || 'General' }
 
     Provide a "Bias Breakdown" which identifies:
-    - Loaded Language: specific words used to evoke emotion.
+- Loaded Language: specific words used to evoke emotion.
     - Framing: how the story is positioned.
     - Omitted Perspectives: what might be missing.
 
-    Article Title: ${article.title}
-    Article Source: ${article.source}
-    Article Content: ${article.content}
+    Article Title: ${ article.title }
+    Article Source: ${ article.source }
+    Article Content: ${ article.content }
 
-    Respond ONLY with a JSON object. The "reliability_score" MUST be a float between 0 and 1.
-    {
-      "summary": "Factual 150-250 word summary...",
-      "sentiment_label": "Positive/Neutral/Neutral",
+    Respond ONLY with a JSON object.The "reliability_score" MUST be a float between 0 and 1.
+{
+  "summary": "Factual 150-250 word summary...",
+    "sentiment_label": "Positive/Neutral/Neutral",
       "sentiment_score": -1 to 1,
-      "bias_label": "Low/Medium/High",
-      "bias_score": 0 to 1,
-      "bias_breakdown": {
-        "loaded_language": ["word1", "word2"],
-        "framing": "Description of framing...",
+        "bias_label": "Low/Medium/High",
+          "bias_score": 0 to 1,
+            "bias_breakdown": {
+    "loaded_language": ["word1", "word2"],
+      "framing": "Description of framing...",
         "omissions": "Potential omissions..."
-      },
-      "reliability_score": 0.85, 
-      "category": "Politics" 
-    }
-  `;
+  },
+  "reliability_score": 0.85,
+    "category": "Politics"
+}
+`;
 
   try {
-    let chatCompletion;
+    let response;
     let retries = 0;
     const maxRetries = 2;
 
     while (retries < maxRetries) {
       try {
-        console.log(`[Groq] Call attempt ${retries + 1} for: ${article.title.substring(0, 30)}`);
-        chatCompletion = await groq.chat.completions.create({
-          messages: [{ role: 'system', content: 'You are a neutral news analyst.' }, { role: 'user', content: prompt }],
-          model: 'llama3-8b-8192', // Using 8b for faster response and better stability on free tier
+        console.log(`[Groq Direct] Call attempt ${ retries + 1 } for: ${ article.title.substring(0, 30) } `);
+        response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+          messages: [
+            { role: 'system', content: 'You are a neutral news analyst.' },
+            { role: 'user', content: prompt }
+          ],
+          model: 'llama3-8b-8192',
           response_format: { type: 'json_object' }
+        }, {
+          headers: {
+            'Authorization': `Bearer ${ GROQ_API_KEY } `,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000 // 30 seconds timeout
         });
         break;
       } catch (error) {
-        if (error.status === 429) {
-          console.log(`[Groq] Rate limit hit. Retrying in 5s...`);
+        if (error.response && error.response.status === 429) {
+          console.log(`[Groq Direct] Rate limit hit.Retrying in 5s...`);
           await new Promise(r => setTimeout(r, 5000));
           retries++;
         } else {
-          console.error('[Groq SDK Error]', {
-            name: error.name,
-            status: error.status,
-            message: error.message,
-            code: error.code,
-            type: error.type
-          });
-          throw error;
+            console.error('[Groq Direct Error]', {
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                message: error.message,
+                data: error.response?.data
+            });
+            throw error;
         }
       }
     }
 
-    if (!chatCompletion) return null;
+    if (!response || !response.data) return null;
 
-    const result = JSON.parse(chatCompletion.choices[0].message.content);
-    console.log(`Successfully processed: ${article.title.substring(0, 30)}`);
+    const result = JSON.parse(response.data.choices[0].message.content);
+    console.log(`Successfully processed: ${ article.title.substring(0, 30) } `);
     return result;
   } catch (error) {
-    console.error(`Error processing article "${article.title.substring(0, 30)}":`, error.message);
+    console.error(`Error processing article "${article.title.substring(0, 30)}": `, error.message);
     return null;
   }
 }
