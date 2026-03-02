@@ -1,5 +1,5 @@
 const axios = require('axios');
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config();
 
 const MEDIASTACK_API_KEY = process.env.MEDIASTACK_API_KEY;
 

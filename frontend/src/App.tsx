@@ -47,8 +47,11 @@ export default function App() {
     let apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
     if (!apiUrl.startsWith('http')) apiUrl = `https://${apiUrl}`;
     try {
-      await fetch(`${apiUrl}/api/ingest`, { method: "POST" });
-      fetchArticles();
+      const res = await fetch(`${apiUrl}/api/ingest`, { method: "POST" });
+      const data = await res.json();
+      alert(data.message || "Sync started");
+      // Wait a few seconds before fetching to allow first few articles to process
+      setTimeout(() => fetchArticles(), 3000);
     } catch (err) {
       alert("Sync failed");
     } finally {

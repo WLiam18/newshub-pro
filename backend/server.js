@@ -44,48 +44,44 @@ app.post('/api/ask', async (req, res) => {
 // Ingest articles
 app.post('/api/ingest', async (req, res) => {
     console.log('Manual ingestion triggered...');
-    try {
-        const rawArticles = await fetchNews();
-        console.log(`Found ${rawArticles.length} articles from Mediastack.`);
-        let count = 0;
+    res.json({ message: 'Ingestion started in the background. Your news feed will update shortly.' });
 
-        for (const article of rawArticles.slice(0, 30)) { // Limit to 30 for manual sync to avoid timeout
-            try {
-                const existing = db.prepare('SELECT id FROM articles WHERE url = ?').get(article.url);
-                if (existing) {
-                    console.log(`Skipping existing: ${article.title.substring(0, 30)}`);
-                    continue;
+    // Run the rest in background
+    (async () => {
+        try {
+            const rawArticles = await fetchNews();
+            console.log(`Found ${rawArticles.length} articles from Mediastack.`);
+            let count = 0;
+
+            for (const article of rawArticles.slice(0, 30)) {
+                try {
+                    const existing = db.prepare('SELECT id FROM articles WHERE url = ?').get(article.url);
+                    if (existing) continue;
+
+                    const results = await processArticle(article);
+                    if (!results) continue;
+
+                    db.prepare(`
+                        INSERT INTO articles (
+                            title, source, date, content, full_text, url, image_url, category_hint, raw_json, 
+                            summary, sentiment_label, sentiment_score, 
+                            bias_label, bias_score, bias_breakdown, reliability_score, category
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `).run(
+                        article.title, article.source, article.date, article.content, article.full_text, article.url, article.image_url, article.category_hint, article.raw_json,
+                        results.summary, results.sentiment_label, results.sentiment_score,
+                        results.bias_label, results.bias_score, JSON.stringify(results.bias_breakdown), results.reliability_score || 0.5, results.category
+                    );
+                    count++;
+                } catch (innerError) {
+                    console.error(`Error in loop for article: ${article.title.substring(0, 30)}`, innerError.message);
                 }
-
-                const results = await processArticle(article);
-                if (!results) {
-                    console.log(`Failed AI for: ${article.title.substring(0, 30)}`);
-                    continue;
-                }
-
-                db.prepare(`
-                    INSERT INTO articles (
-                        title, source, date, content, full_text, url, image_url, category_hint, raw_json, 
-                        summary, sentiment_label, sentiment_score, 
-                        bias_label, bias_score, bias_breakdown, reliability_score, category
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `).run(
-                    article.title, article.source, article.date, article.content, article.full_text, article.url, article.image_url, article.category_hint, article.raw_json,
-                    results.summary, results.sentiment_label, results.sentiment_score,
-                    results.bias_label, results.bias_score, JSON.stringify(results.bias_breakdown), results.reliability_score || 0.5, results.category
-                );
-                count++;
-                console.log(`Ingested [${count}]: ${article.title.substring(0, 30)}`);
-            } catch (innerError) {
-                console.error(`Error in loop for article: ${article.title.substring(0, 30)}`, innerError.message);
             }
+            console.log(`Manual ingestion completed. Added ${count} articles.`);
+        } catch (error) {
+            console.error('Background ingestion error:', error.message);
         }
-
-        res.json({ message: `Ingested ${count} new articles` });
-    } catch (error) {
-        console.error('Ingestion endpoint error:', error.message);
-        res.status(500).json({ error: error.message });
-    }
+    })();
 });
 
 // Auth Endpoints (Simple)
